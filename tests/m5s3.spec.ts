@@ -58,3 +58,64 @@ test("cannot add more singing bowls", async ({ page }) => {
   await listItem.getByRole("button").click();
   await expect(listItem.getByRole("button")).toHaveText("Sold out");
 });
+/*
+P5: Remove, both ways
+Click Remove and Cancel: the item stays. 
+Click Remove and OK: the cart is empty.
+ */
+
+// LAB: Core - P5
+test("P5 - Remove item: Cancel keeps item, OK removes item", async ({
+  page,
+}) => {
+  await page.goto(APP);
+
+  const productsList = page.getByRole("list", {
+    name: "Products",
+  });
+
+  // Add Pashmina Shawl
+  const pashminaCard = productsList.locator("li").filter({
+    has: page.getByRole("heading", {
+      name: "Pashmina Shawl",
+    }),
+  });
+
+  await pashminaCard.getByRole("button", { name: "Add to cart" }).click();
+
+  const pashminaRow = page.getByRole("row", {
+    name: /Pashmina Shawl/,
+  });
+
+  // Verify the item was added
+  await expect(pashminaRow).toBeVisible();
+  await expect(pashminaRow.getByTestId("qty")).toHaveText("1");
+
+  await expect(page.getByTestId("cart-count")).toHaveText("1");
+
+  // Remove -> Cancel
+  page.once("dialog", async (dialog) => {
+    await dialog.dismiss();
+  });
+
+  await pashminaRow.getByRole("button", { name: "Remove" }).click();
+
+  await expect(pashminaRow).toBeVisible();
+  await expect(pashminaRow.getByTestId("qty")).toHaveText("1");
+
+  await expect(page.getByTestId("cart-count")).toHaveText("1");
+
+  // Remove -> OK
+  page.once("dialog", async (dialog) => {
+    await dialog.accept();
+  });
+
+  await pashminaRow.getByRole("button", { name: "Remove" }).click();
+
+  // verify cart is empty after Remove-> OK
+  await expect(page.getByTestId("cart-row")).toHaveCount(0);
+  await expect(page.getByText("Your cart is empty.")).toBeVisible();
+  await expect(page.getByTestId("cart-count")).toHaveText("0");
+
+  // Note: we are starting with only 1 item (Pashmina Shawl) added to cart. If there were multiple items added to cart, check the "qty".
+});
