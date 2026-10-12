@@ -204,7 +204,7 @@ test("P9: Receipt tab shows the same order ID and total", async ({ page }) => {
   // starting with initial page with no items added yet
   await expect(page.getByText("Your cart is empty.")).toBeVisible();
 
-  // Expected:4,750; qty:1, delivery:outside (250), subtotal:4500 total 4,500 + 250 = 4,700
+  // Expected:4,750; qty:1, delivery:outside (250), subtotal:4500 total 4,500 + 250 = 4,750
   await addToCart(page, "Pashmina Shawl");
   await page.getByLabel("Delivery area").selectOption("outside");
   await expect(page.getByTestId("delivery-fee")).toHaveText("Rs 250.00");
