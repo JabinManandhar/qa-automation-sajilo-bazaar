@@ -190,3 +190,52 @@ test("P8: Wrong MPIN shows an error inside eSewa and places no order", async ({
   ).toBeHidden(); //make sure "Order placed" is hidden
   await expect(esewa.getByRole("button", { name: "Pay now" })).toBeEnabled();
 });
+
+/* 
+P9: Receipt tab
+Complete an order, open the receipt, and prove it shows the same order ID and total.
+
+Done when: both pages agree on the ID and the amount.
+*/
+
+test("P9: Receipt tab shows the same order ID and total", async ({ page }) => {
+  await page.goto(APP);
+
+  // starting with initial page with no items added yet
+  await expect(page.getByText("Your cart is empty.")).toBeVisible();
+
+ // Expected:4,750; qty:1, delivery:outside (250), subtotal:4500 total 4,500 + 250 = 4,700
+  await addToCart(page, "Pashmina Shawl");
+  await page.getByLabel("Delivery area").selectOption("outside");
+  await expect(page.getByTestId("delivery-fee")).toHaveText("Rs 250.00");
+  await expect(page.getByTestId("order-total")).toHaveText("Rs 4,750.00");
+
+  await page.getByRole("button", { name: "Proceed to checkout" }).click();
+  await expect(page.getByRole("heading", { name: "Checkout" })).toBeVisible();
+
+  // Pay with the Correct MPIN 
+  const esewa = page.frameLocator('iframe[title="eSewa payment"]');
+  await esewa.getByLabel("eSewa ID").fill("9841234567");
+  await esewa.getByLabel("MPIN").fill("1234");
+  await esewa.getByRole("button", { name: "Pay now" }).click();
+
+  // verify the order is placed
+  await expect(page.getByRole("heading", { name: "Order placed!" })).toBeVisible();
+  await expect(page.getByTestId("paid-amount")).toHaveText("Rs 4,750.00");
+
+  // Read the order ID FIRST. It is random, so check its shape, then read it once.
+  const orderIdLocator = page.getByTestId("order-id");
+  await expect(orderIdLocator).toHaveText(/^SB-\d{6}$/);
+  const orderId = await orderIdLocator.textContent();
+
+  // order: add listener, perform action like click, then catch
+  const receiptPromise = page.waitForEvent("popup");
+  await page.getByRole("link", { name: "View receipt" }).click();
+  const receipt = await receiptPromise;
+
+  // verify the new tab with correct title, same order ID, same total
+  await expect(receipt).toHaveTitle("Receipt | Sajilo Bazaar");
+  await expect(receipt.getByTestId("receipt-order-id")).toHaveText(orderId!);
+  await expect(receipt.getByTestId("receipt-total")).toHaveText("Rs 4,750.00");
+  await expect(receipt.getByTestId("receipt-delivery")).toHaveText("Rs 250.00");
+});
