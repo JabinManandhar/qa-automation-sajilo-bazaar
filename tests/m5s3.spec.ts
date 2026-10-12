@@ -58,6 +58,7 @@ test("cannot add more singing bowls", async ({ page }) => {
   await listItem.getByRole("button").click();
   await expect(listItem.getByRole("button")).toHaveText("Sold out");
 });
+
 /*
 P5: Remove, both ways
 Click Remove and Cancel: the item stays. 
@@ -118,4 +119,40 @@ test("P5 - Remove item: Cancel keeps item, OK removes item", async ({
   await expect(page.getByTestId("cart-count")).toHaveText("0");
 
   // Note: we are starting with only 1 item (Pashmina Shawl) added to cart. If there were multiple items added to cart, check the "qty".
+});
+
+/* 
+P7: Gift note
+Check out a Pashmina Shawl to outside the Valley, then add a gift note through the prompt.
+*/
+
+test("P7: Add gift note for Pashmina Shawl checkout", async ({ page }) => {
+  await page.goto(APP);
+
+  // Adding a Pashmina Shawl to the cart
+  const productsList = page.getByRole("list", { name: "Products" });
+  const pashminaCard = productsList.locator("li").filter({
+    has: page.getByRole("heading", { name: "Pashmina Shawl" }),
+  });
+  await pashminaCard.getByRole("button", { name: "Add to cart" }).click();
+  await expect(page.getByTestId("cart-count")).toHaveText("1");   
+
+
+  //Expected: 4,500 + 250 = 4,750
+  await page.getByLabel("Delivery area").selectOption("outside");
+  await expect(page.getByTestId("delivery-fee")).toHaveText("Rs 250.00");
+  await expect(page.getByTestId("order-total")).toHaveText("Rs 4,750.00");
+
+  //Proceed to Checkout
+  await page.getByRole("button", { name: "Proceed to checkout" }).click();
+  await expect(page.getByRole("heading", { name: "Checkout" })).toBeVisible();
+
+  //fill in "Happy Dashain" gift note once the prompt appears
+  page.once("dialog", async (dialog) => {
+    await dialog.accept("Happy Dashain!");
+  });
+  await page.getByRole("button", { name: "Add a gift note" }).click();
+
+  //check Gift note contains the same text as added in the prompt
+  await expect(page.getByTestId("gift-note")).toHaveText('Gift note: "Happy Dashain!"');
 });
