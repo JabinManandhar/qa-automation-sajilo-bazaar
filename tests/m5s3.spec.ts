@@ -204,7 +204,7 @@ test("P9: Receipt tab shows the same order ID and total", async ({ page }) => {
   // starting with initial page with no items added yet
   await expect(page.getByText("Your cart is empty.")).toBeVisible();
 
- // Expected:4,750; qty:1, delivery:outside (250), subtotal:4500 total 4,500 + 250 = 4,700
+  // Expected:4,750; qty:1, delivery:outside (250), subtotal:4500 total 4,500 + 250 = 4,700
   await addToCart(page, "Pashmina Shawl");
   await page.getByLabel("Delivery area").selectOption("outside");
   await expect(page.getByTestId("delivery-fee")).toHaveText("Rs 250.00");
@@ -213,14 +213,16 @@ test("P9: Receipt tab shows the same order ID and total", async ({ page }) => {
   await page.getByRole("button", { name: "Proceed to checkout" }).click();
   await expect(page.getByRole("heading", { name: "Checkout" })).toBeVisible();
 
-  // Pay with the Correct MPIN 
+  // Pay with the Correct MPIN
   const esewa = page.frameLocator('iframe[title="eSewa payment"]');
   await esewa.getByLabel("eSewa ID").fill("9841234567");
   await esewa.getByLabel("MPIN").fill("1234");
   await esewa.getByRole("button", { name: "Pay now" }).click();
 
   // verify the order is placed
-  await expect(page.getByRole("heading", { name: "Order placed!" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Order placed!" }),
+  ).toBeVisible();
   await expect(page.getByTestId("paid-amount")).toHaveText("Rs 4,750.00");
 
   // Read the order ID FIRST. It is random, so check its shape, then read it once.
@@ -238,4 +240,54 @@ test("P9: Receipt tab shows the same order ID and total", async ({ page }) => {
   await expect(receipt.getByTestId("receipt-order-id")).toHaveText(orderId!);
   await expect(receipt.getByTestId("receipt-total")).toHaveText("Rs 4,750.00");
   await expect(receipt.getByTestId("receipt-delivery")).toHaveText("Rs 250.00");
+});
+
+/* 
+P10: Help chat
+Open the help pop-up, wait for the agent to join, send a message and check the reply.
+
+Done when: the reply is visible and the shop page is still usable.
+*/
+
+test("P10: Help chat - agent joins, replies, and the shop stays usable", async ({
+  page,
+}) => {
+  await page.goto(APP);
+
+  // starting with initial page with no items added yet
+  await expect(page.getByText("Your cart is empty.")).toBeVisible();
+
+  // Order: Listen, click, collect
+  const helpPromise = page.waitForEvent("popup");
+  await page.getByRole("button", { name: "Need help? Chat with us" }).click();
+  const help = await helpPromise;
+
+  await expect(help).toHaveTitle("Sajilo Bazaar Support");
+
+  //now we are using the help window
+  const chat = help.getByRole("list", { name: "Chat messages" });
+
+  // verify the agent has joined
+  await expect(
+    chat.getByText("Sita from Sajilo Bazaar has joined the chat."),
+  ).toBeVisible();
+
+  await help.getByLabel("Type your message").fill("Hi, I need help.");
+  await help.getByRole("button", { name: "Send" }).click();
+
+  // verify the help chat message appears, then the agent reply message exists and is visible
+  await expect(chat.getByText("Hi, I need help.")).toBeVisible();
+  await expect(
+    chat.getByText(
+      "Thanks for your message. We will get back to you within 10 minutes.",
+    ),
+  ).toBeVisible();
+
+  // Close the pop-up
+  await help.close();
+  expect(help.isClosed()).toBe(true);
+
+  // The shop page still works
+  await addToCart(page, "Gundruk");
+  await expect(page.getByTestId("cart-count")).toHaveText("1");
 });
