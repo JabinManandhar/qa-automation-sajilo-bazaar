@@ -120,12 +120,8 @@ Check out a Pashmina Shawl to outside the Valley, then add a gift note through t
 test("P7: Add gift note for Pashmina Shawl checkout", async ({ page }) => {
   await page.goto(APP);
 
-  // Adding a Pashmina Shawl to the cart
-  const productsList = page.getByRole("list", { name: "Products" });
-  const pashminaCard = productsList.locator("li").filter({
-    has: page.getByRole("heading", { name: "Pashmina Shawl" }),
-  });
-  await pashminaCard.getByRole("button", { name: "Add to cart" }).click();
+  // use addToCart helper function to add Pashmina Shawl to cart
+  await addToCart(page, "Pashmina Shawl");
   await expect(page.getByTestId("cart-count")).toHaveText("1");
 
   //Expected: 4,500 + 250 = 4,750
@@ -147,4 +143,50 @@ test("P7: Add gift note for Pashmina Shawl checkout", async ({ page }) => {
   await expect(page.getByTestId("gift-note")).toHaveText(
     'Gift note: "Happy Dashain!"',
   );
+});
+
+/* 
+P8: Wrong MPIN
+Pay with MPIN 0000. Prove the error shows inside eSewa and no order is placed.
+
+Done when: the frame shows the error and "Order placed!" is hidden.
+*/
+
+test("P8: Wrong MPIN shows an error inside eSewa and places no order", async ({
+  page,
+}) => {
+  await page.goto(APP);
+
+  // starting with initial page with no items added yet
+  await expect(page.getByText("Your cart is empty.")).toBeVisible();
+
+  // Expected:4,600; qty:1, delivery:inside (100), subtotal:4500 total 4,500 + 100 = 4,600
+  await addToCart(page, "Pashmina Shawl");
+  await expect(page.getByTestId("cart-count")).toHaveText("1");
+  await expect(page.getByText("Your cart is empty.")).toBeHidden();
+
+  await page.getByLabel("Delivery area").selectOption("valley");
+  await expect(page.getByTestId("delivery-fee")).toHaveText("Rs 100.00");
+  await expect(page.getByTestId("subtotal")).toHaveText("Rs 4,500.00");
+  await expect(page.getByTestId("order-total")).toHaveText("Rs 4,600.00");
+
+  await page.getByRole("button", { name: "Proceed to checkout" }).click();
+  await expect(page.getByRole("heading", { name: "Checkout" })).toBeVisible();
+
+  const esewa = page.frameLocator('iframe[title="eSewa payment"]');
+  await expect(esewa.getByTestId("pay-amount")).toHaveText("Rs 4,600.00");
+
+  await esewa.getByLabel("eSewa ID").fill("9841234567");
+  await esewa.getByLabel("MPIN").fill("0000");
+  await esewa.getByRole("button", { name: "Pay now" }).click();
+
+  await expect(esewa.getByRole("alert")).toHaveText(
+    "Incorrect eSewa ID or MPIN.",
+  ); //display error with role "alert" and message: "Incorrect eSewa ID or MPIN."
+
+  await expect(esewa.getByText("Payment successful")).toBeHidden();
+  await expect(
+    page.getByRole("heading", { name: "Order placed!" }),
+  ).toBeHidden(); //make sure "Order placed" is hidden
+  await expect(esewa.getByRole("button", { name: "Pay now" })).toBeEnabled();
 });
