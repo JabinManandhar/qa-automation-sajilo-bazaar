@@ -3,6 +3,7 @@ import path from "node:path";
 import { listen } from "node:quic";
 import { before, beforeEach } from "node:test";
 import { pathToFileURL } from "node:url";
+import { addToCart } from "../helpers/helpers";
 
 // Turns the file path into a file:/// URL that works on any OS
 const APP = pathToFileURL(path.resolve("app/sajilo-bazaar.html")).href;
@@ -71,18 +72,8 @@ test("P5 - Remove item: Cancel keeps item, OK removes item", async ({
 }) => {
   await page.goto(APP);
 
-  const productsList = page.getByRole("list", {
-    name: "Products",
-  });
-
-  // Add Pashmina Shawl
-  const pashminaCard = productsList.locator("li").filter({
-    has: page.getByRole("heading", {
-      name: "Pashmina Shawl",
-    }),
-  });
-
-  await pashminaCard.getByRole("button", { name: "Add to cart" }).click();
+  // use helpers.ts to refactor add to cart for Pashmina Shawl
+  await addToCart(page, "Pashmina Shawl");
 
   const pashminaRow = page.getByRole("row", {
     name: /Pashmina Shawl/,
@@ -135,8 +126,7 @@ test("P7: Add gift note for Pashmina Shawl checkout", async ({ page }) => {
     has: page.getByRole("heading", { name: "Pashmina Shawl" }),
   });
   await pashminaCard.getByRole("button", { name: "Add to cart" }).click();
-  await expect(page.getByTestId("cart-count")).toHaveText("1");   
-
+  await expect(page.getByTestId("cart-count")).toHaveText("1");
 
   //Expected: 4,500 + 250 = 4,750
   await page.getByLabel("Delivery area").selectOption("outside");
@@ -154,5 +144,7 @@ test("P7: Add gift note for Pashmina Shawl checkout", async ({ page }) => {
   await page.getByRole("button", { name: "Add a gift note" }).click();
 
   //check Gift note contains the same text as added in the prompt
-  await expect(page.getByTestId("gift-note")).toHaveText('Gift note: "Happy Dashain!"');
+  await expect(page.getByTestId("gift-note")).toHaveText(
+    'Gift note: "Happy Dashain!"',
+  );
 });
